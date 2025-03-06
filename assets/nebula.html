@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Cloud Background</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        
+        // Create cloud particles
+        const cloudCount = 500;
+        const cloudParticles = [];
+        
+        // Create a group to hold all clouds
+        const nebula = new THREE.Group();
+        
+        for (let i = 0; i < cloudCount; i++) {
+            // Create particles with random size
+            const geometry = new THREE.SphereGeometry(1 + Math.random() * 2, 8, 8);
+            
+            // Create materials with different colors for nebula effect
+            const hue = Math.random();
+            let color;
+            
+            if (hue < 0.33) {
+                color = new THREE.Color(0.5 + Math.random() * 0.5, 0, 0.5 + Math.random() * 0.5); // Purple
+            } else if (hue < 0.66) {
+                color = new THREE.Color(0, 0, 0.5 + Math.random() * 0.5); // Blue
+            } else {
+                color = new THREE.Color(0.5 + Math.random() * 0.5, 0, 0); // Red
+            }
+            
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.2 + Math.random() * 0.3
+            });
+            
+            // Create cloud particle
+            const cloud = new THREE.Mesh(geometry, material);
+            
+            // Random positions
+            cloud.position.x = (Math.random() - 0.5) * 50;
+            cloud.position.y = (Math.random() - 0.5) * 50;
+            cloud.position.z = (Math.random() - 0.5) * 50;
+            
+            // Scale the cloud randomly
+            const scale = 0.5 + Math.random() * 1.5;
+            cloud.scale.set(scale, scale, scale);
+            
+            // Add to our cloud particles array and to scene
+            cloudParticles.push({
+                mesh: cloud,
+                rotSpeed: (Math.random() - 0.5) * 0.002
+            });
+            
+            nebula.add(cloud);
+        }
+        
+        scene.add(nebula);
+        
+        camera.position.z = 30;
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate each cloud particle slightly
+            cloudParticles.forEach(p => {
+                p.mesh.rotation.x += p.rotSpeed;
+                p.mesh.rotation.y += p.rotSpeed;
+            });
+            
+            // Rotate the entire nebula slowly
+            nebula.rotation.y += 0.0005;
+            nebula.rotation.x += 0.0002;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

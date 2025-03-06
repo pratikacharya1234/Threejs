@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floating Particles Background</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0a0a2a; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        
+        // Create particles
+        const particlesCount = 1000;
+        const particles = new THREE.Group();
+        
+        // Array to store particle velocities
+        const particleVelocities = [];
+        
+        for (let i = 0; i < particlesCount; i++) {
+            const geometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const material = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(
+                    0.5 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.5
+                ),
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            
+            // Random positions
+            particle.position.x = (Math.random() - 0.5) * 10;
+            particle.position.y = (Math.random() - 0.5) * 10;
+            particle.position.z = (Math.random() - 0.5) * 10;
+            
+            // Random velocities
+            particleVelocities.push({
+                x: (Math.random() - 0.5) * 0.01,
+                y: (Math.random() - 0.5) * 0.01,
+                z: (Math.random() - 0.5) * 0.01
+            });
+            
+            particles.add(particle);
+        }
+        
+        scene.add(particles);
+        
+        camera.position.z = 5;
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update particle positions
+            for (let i = 0; i < particlesCount; i++) {
+                const particle = particles.children[i];
+                const velocity = particleVelocities[i];
+                
+                particle.position.x += velocity.x;
+                particle.position.y += velocity.y;
+                particle.position.z += velocity.z;
+                
+                // Bounce off invisible boundaries
+                if (Math.abs(particle.position.x) > 5) {
+                    velocity.x *= -1;
+                }
+                if (Math.abs(particle.position.y) > 5) {
+                    velocity.y *= -1;
+                }
+                if (Math.abs(particle.position.z) > 5) {
+                    velocity.z *= -1;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

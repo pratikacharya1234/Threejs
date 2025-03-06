@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Portfolio Creator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            display: none;
+            z-index: 10;
+        }
+        #edit-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 20;
+            width: 300px;
+        }
+        input, textarea, button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        .instructions {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+        #close-edit {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: none;
+            border: none;
+            color: #333;
+            font-size: 18px;
+            cursor: pointer;
+            width: auto;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas"></div>
+    
+    <div id="controls">
+        <h2>Portfolio Creator</h2>
+        <div class="instructions">
+            Click to select objects. Double-click to edit.
+        </div>
+        <button id="add-cube">Add Cube</button>
+        <button id="add-sphere">Add Sphere</button>
+        <button id="add-cylinder">Add Cylinder</button>
+        <button id="save-scene">Save Portfolio</button>
+        <button id="load-scene">Load Portfolio</button>
+    </div>
+    
+    <div id="info-panel">
+        <h3 id="info-title">Title</h3>
+        <p id="info-description">Description</p>
+        <p id="info-contact">Contact</p>
+    </div>
+    
+    <div id="edit-panel">
+        <button id="close-edit">×</button>
+        <h2>Edit Object</h2>
+        <input type="text" id="edit-title" placeholder="Title" />
+        <textarea id="edit-description" placeholder="Description" rows="4"></textarea>
+        <input type="text" id="edit-contact" placeholder="Contact Info" />
+        <div>
+            <label>Color:</label>
+            <input type="color" id="edit-color" />
+        </div>
+        <button id="save-edit">Save Changes</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+        import { OrbitControls } from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/controls/OrbitControls.js';
+        
+        let scene, camera, renderer, controls;
+        let objects = [];
+        let selectedObject = null;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        
+        // Initialize the 3D scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x121212);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // Add orbit controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add a grid
+            const gridHelper = new THREE.GridHelper(10, 10);
+            scene.add(gridHelper);
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onDocumentClick);
+            renderer.domElement.addEventListener('dblclick', onDocumentDoubleClick);
+            
+            document.getElementById('add-cube').addEventListener('click', addCube);
+            document.getElementById('add-sphere').addEventListener('click', addSphere);
+            document.getElementById('add-cylinder').addEventListener('click', addCylinder);
+            document.getElementById('save-scene').addEventListener('click', saveScene);
+            document.getElementById('load-scene').addEventListener('click', loadScene);
+            document.getElementById('save-edit').addEventListener('click', saveEdit);
+            document.getElementById('close-edit').addEventListener('click', closeEditPanel);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function onDocumentClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(objects);
+            
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                selectObject(object);
+                showInfoPanel(object.userData);
+            } else {
+                deselectObject();
+                hideInfoPanel();
+            }
+        }
+        
+        function onDocumentDoubleClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(objects);
+            
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                showEditPanel(object);
+            }
+        }
+        
+        function selectObject(object) {
+            deselectObject();
+            
+            selectedObject = object;
+            selectedObject.material.emissive = new THREE.Color(0x333333);
+            selectedObject.material.emissiveIntensity = 0.5;
+        }
+        
+        function deselectObject() {
+            if (selectedObject) {
+                selectedObject.material.emissive = new THREE.Color(0x000000);
+                selectedObject.material.emissiveIntensity = 0;
+                selectedObject = null;
+            }
+        }
+        
+        function showInfoPanel(userData) {
+            const infoPanel = document.getElementById('info-panel');
+            document.getElementById('info-title').textContent = userData.title || 'Untitled Object';
+            document.getElementById('info-description').textContent = userData.description || 'No description';
+            document.getElementById('info-contact').textContent = userData.contact || 'No contact info';
+            infoPanel.style.display = 'block';
+        }
+        
+        function hideInfoPanel() {
+            document.getElementById('info-panel').style.display = 'none';
+        }
+        
+        function showEditPanel(object) {
+            const editPanel = document.getElementById('edit-panel');
+            document.getElementById('edit-title').value = object.userData.title || '';
+            document.getElementById('edit-description').value = object.userData.description || '';
+            document.getElementById('edit-contact').value = object.userData.contact || '';
+            document.getElementById('edit-color').value = '#' + object.material.color.getHexString();
+            
+            editPanel.style.display = 'block';
+        }
+        
+        function closeEditPanel() {
+            document.getElementById('edit-panel').style.display = 'none';
+        }
+        
+        function saveEdit() {
+            if (!selectedObject) return;
+            
+            selectedObject.userData.title = document.getElementById('edit-title').value;
+            selectedObject.userData.description = document.getElementById('edit-description').value;
+            selectedObject.userData.contact = document.getElementById('edit-contact').value;
+            
+            const color = new THREE.Color(document.getElementById('edit-color').value);
+            selectedObject.material.color.set(color);
+            
+            showInfoPanel(selectedObject.userData);
+            closeEditPanel();
+        }
+        
+        function createBasicMaterial() {
+            return new THREE.MeshStandardMaterial({
+                color: getRandomColor(),
+                metalness: 0.3,
+                roughness: 0.4
+            });
+        }
+        
+        function getRandomColor() {
+            const colors = [0x4285f4, 0xea4335, 0xfbbc05, 0x34a853, 0x9c27b0, 0xff9800];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        function addObjectToScene(geometry, position) {
+            const material = createBasicMaterial();
+            const object = new THREE.Mesh(geometry, material);
+            
+            object.position.copy(position || new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 4
+            ));
+            
+            object.userData = {
+                title: 'New Object',
+                description: 'Click to edit this object',
+                contact: ''
+            };
+            
+            objects.push(object);
+            scene.add(object);
+            selectObject(object);
+            showInfoPanel(object.userData);
+            showEditPanel(object);
+            
+            return object;
+        }
+        
+        function addCube() {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            return addObjectToScene(geometry);
+        }
+        
+        function addSphere() {
+            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            return addObjectToScene(geometry);
+        }
+        
+        function addCylinder() {
+            const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+            return addObjectToScene(geometry);
+        }
+        
+        function saveScene() {
+            const data = {
+                objects: objects.map(obj => ({
+                    type: getObjectType(obj),
+                    position: { x: obj.position.x, y: obj.position.y, z: obj.position.z },
+                    color: '#' + obj.material.color.getHexString(),
+                    userData: obj.userData
+                }))
+            };
+            
+            const json = JSON.stringify(data);
+            localStorage.setItem('portfolioScene', json);
+            
+            alert('Portfolio saved successfully!');
+        }
+        
+        function getObjectType(obj) {
+            if (obj.geometry instanceof THREE.BoxGeometry) return 'cube';
+            if (obj.geometry instanceof THREE.SphereGeometry) return 'sphere';
+            if (obj.geometry instanceof THREE.CylinderGeometry) return 'cylinder';
+            return 'unknown';
+        }
+        
+        function loadScene() {
+            const json = localStorage.getItem('portfolioScene');
+            if (!json) {
+                alert('No saved portfolio found!');
+                return;
+            }
+            
+            const data = JSON.parse(json);
+            
+            // Clear current objects
+            while (objects.length > 0) {
+                const obj = objects.pop();
+                scene.remove(obj);
+            }
+            
+            // Create new objects from saved data
+            data.objects.forEach(objData => {
+                let geometry;
+                
+                switch (objData.type) {
+                    case 'cube':
+                        geometry = new THREE.BoxGeometry(1, 1, 1);
+                        break;
+                    case 'sphere':
+                        geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                        break;
+                    case 'cylinder':
+                        geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                        break;
+                    default:
+                        return;
+                }
+                
+                const position = new THREE.Vector3(
+                    objData.position.x,
+                    objData.position.y,
+                    objData.position.z
+                );
+                
+                const obj = addObjectToScene(geometry, position);
+                obj.material.color.set(objData.color);
+                obj.userData = objData.userData;
+            });
+            
+            deselectObject();
+            hideInfoPanel();
+            
+            alert('Portfolio loaded successfully!');
+        }
+        
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
