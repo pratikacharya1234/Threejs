@@ -1,10 +1,10 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const cookieParser = require('cookie-parser'); // You'll need to install this package
+const cookieParser = require('cookie-parser');
 
 const app = express();
-const PORT = process.env.PORT || 3001;  // Change from 3000 to 3001
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 app.use(cookieParser());
@@ -27,7 +27,7 @@ app.use('/premium/full', express.static(path.join(__dirname, 'premium/full')));
 // API endpoint to get list of backgrounds
 app.get('/api/backgrounds', (req, res) => {
   try {
-    // This is a predefined list of your HTML files, which is more reliable in serverless environments
+    // predefined list of HTML files, which is more reliable in serverless environments
     const backgrounds = [
       { filename: 'float.html', path: '/assets/float.html' },
       { filename: 'index.html', path: '/assets/index.html' },
@@ -49,7 +49,7 @@ app.get('/api/premium', (req, res) => {
     // Using predefined list for serverless environment
     const premiumFiles = [
       { filename: 'portfolio.html', path: '/premium/preview/portfolio.html' }
-      // Add other premium files here
+      
     ];
     
     res.json(premiumFiles);
@@ -96,8 +96,8 @@ app.get('/preview/:filename', (req, res) => {
   // Allow request from any page on our own domain or from localhost during development
   const allowedDomains = [
     'localhost', 
-    process.env.VERCEL_URL,  // Vercel's provided URL
-    process.env.CUSTOM_DOMAIN // Your custom domain if set
+    process.env.VERCEL_URL,  
+    process.env.CUSTOM_DOMAIN 
   ];
   
   const isValidReferer = !referer || 
