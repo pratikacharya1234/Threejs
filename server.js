@@ -57,8 +57,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve assets freely
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// Serve preview versions freely
-app.use('/premium/preview', express.static(path.join(__dirname, 'premium/preview')));
+// Serve preview versions from assets directory
+app.use('/preview', express.static(path.join(__dirname, 'assets')));
 
 // Restrict access to full versions
 app.use('/premium/full', isAuthenticated, express.static(path.join(__dirname, 'premium/full')));
@@ -141,11 +141,12 @@ app.get('/preview/:filename', (req, res) => {
   
   const isValidReferer = !referer || 
     allowedDomains.some(domain => referer.includes(domain)) || 
-    referer.includes('/premium.html');
+    referer.includes('/premium.html') || 
+    referer.includes('/index.html');
   
   if (isValidReferer) {
     try {
-      const filePath = path.join(__dirname, 'premium/preview', filename);
+      const filePath = path.join(__dirname, 'assets', filename);
       if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
       } else {
