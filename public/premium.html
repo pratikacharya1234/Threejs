@@ -246,7 +246,11 @@
                         fullPreview.src = `/premium/preview/${filename}`;
                         
                         try {
-                            const response = await fetch(`/api/code/${filename}`);
+                            const response = await fetch(`/api/code/${filename}`, {
+                                headers: {
+                                    'Authorization': `Bearer ${document.cookie.split('authToken=')[1]}`
+                                }
+                            });
                             const code = await response.text();
                             codeContent.textContent = code;
                         } catch (error) {
@@ -261,7 +265,11 @@
                         const filename = e.target.getAttribute('data-filename');
                         
                         try {
-                            const response = await fetch(`/api/code/${filename}`);
+                            const response = await fetch(`/api/code/${filename}`, {
+                                headers: {
+                                    'Authorization': `Bearer ${document.cookie.split('authToken=')[1]}`
+                                }
+                            });
                             const code = await response.text();
                             await navigator.clipboard.writeText(code);
                             

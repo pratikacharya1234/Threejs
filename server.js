@@ -1,55 +1,13 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const jwt = require('jsonwebtoken'); // You'll need to install this package
+const cookieParser = require('cookie-parser'); // You'll need to install this package
 
 const app = express();
 const PORT = process.env.PORT || 3001;  // Change from 3000 to 3001
 
-// JWT secret - should be in environment variables in production
-const JWT_SECRET = process.env.JWT_SECRET || 'alter2428013854489';
-
 app.use(express.json());
-
-// Middleware for authentication using JWT
-function isAuthenticated(req, res, next) {
-  try {
-    const token = req.cookies?.authToken || req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.redirect('/login');
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    return next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return res.redirect('/login');
-  }
-}
-
-// Middleware to check if the user has purchased access
-function hasPurchased(req, res, next) {
-  try {
-    const token = req.cookies?.authToken || req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded && decoded.hasPurchased) {
-      req.user = decoded;
-      return next();
-    } else {
-      return res.status(403).json({ error: 'Access denied. Please purchase access to view the code.' });
-    }
-  } catch (error) {
-    console.error('Purchase verification error:', error);
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-}
+app.use(cookieParser());
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -60,8 +18,11 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 // Serve preview versions from assets directory
 app.use('/preview', express.static(path.join(__dirname, 'assets')));
 
-// Restrict access to full versions
-app.use('/premium/full', isAuthenticated, express.static(path.join(__dirname, 'premium/full')));
+// Serve premium preview versions freely
+app.use('/premium/preview', express.static(path.join(__dirname, 'premium/preview')));
+
+// Serve premium full versions freely
+app.use('/premium/full', express.static(path.join(__dirname, 'premium/full')));
 
 // API endpoint to get list of backgrounds
 app.get('/api/backgrounds', (req, res) => {
@@ -99,9 +60,9 @@ app.get('/api/premium', (req, res) => {
 });
 
 // API endpoint to get code content
-app.get('/api/code/:filename', hasPurchased, (req, res) => {
+app.get('/api/code/:filename', (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'premium/preview', filename);
+  const filePath = path.join(__dirname, 'assets', filename);
   
   // Validate the filename to prevent directory traversal
   if (!filename.match(/^[a-zA-Z0-9_\-]+\.html$/)) {
@@ -178,23 +139,6 @@ app.post('/api/login', (req, res) => {
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
   }
-});
-
-// Purchase verification endpoint - implement with real payment verification
-app.post('/api/purchase', isAuthenticated, (req, res) => {
-  // In a real app, verify payment with Stripe/PayPal etc.
-  // For demo purposes:
-  const userId = req.user.id;
-  
-  // Update user in database to reflect purchase
-  // For demo, we'll just create a new token with hasPurchased=true
-  const newToken = jwt.sign({
-    ...req.user,
-    hasPurchased: true
-  }, JWT_SECRET, { expiresIn: '30d' });
-  
-  res.cookie('authToken', newToken, { httpOnly: true });
-  res.json({ success: true, hasPurchased: true });
 });
 
 // API endpoint to check if the user has purchased access
