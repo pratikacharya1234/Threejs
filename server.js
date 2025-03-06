@@ -119,14 +119,25 @@ app.get('/preview/:filename', (req, res) => {
       if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
       } else {
-        res.status(404).send('File not found');
+        res.status(404).json({ error: 'File not found' });
       }
     } catch (error) {
       console.error('Error serving file:', error);
-      res.status(500).send('Failed to serve file');
+      res.status(500).json({ error: 'Failed to serve file' });
     }
   } else {
-    res.status(403).send('Access denied');
+    res.status(403).json({ error: 'Access denied' });
+  }
+});
+
+// API endpoint to check if the user has purchased access
+app.get('/api/check-purchase', (req, res) => {
+  // Implement your purchase verification logic here
+  // For example, check if the user has purchased access
+  if (req.user && req.user.hasPurchased) {
+    res.json({ hasPurchased: true });
+  } else {
+    res.json({ hasPurchased: false });
   }
 });
 
